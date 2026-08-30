@@ -20,7 +20,6 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
     private final List<Object> proxies = new ArrayList<>();
     private final Map<Object,JSObject> exportProxies = new HashMap<>(); // Map of @JSExport-implementing-Object => JSObject
     private final Packer packer;
-    private final Deque<Runnable> pollqueue = new ConcurrentLinkedDeque<Runnable>();
     private final JSObject globals;
     private volatile long pointer;
     private volatile int generation;
@@ -237,19 +236,14 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
      */
     public Object evalNow(String script) {
         try {
-            return runtime.doNow(new Task<Object>("eval " + getPointer()) {
-                public void run() {
-                    final Task<Object> task = this;
-                    bump();
-                    byte[] data = getRuntime().fnEvalScript(JSContext.this, script);
-                    Object o = unpack(data);
-                    if (o instanceof RuntimeException) {
-                        completeExceptionally((RuntimeException)o);
-                    } else {
-                        complete(o);
-                    }
-                }
-            }).get();
+            bump();
+            byte[] data = getRuntime().fnEvalScript(JSContext.this, script);
+            Object o = unpack(data);
+            if (o instanceof RuntimeException) {
+                throw((RuntimeException)o);
+            } else {
+                return o;
+            }
         } catch (Exception e) {
             throw JSRuntime.toRuntimeException(e);
         }
@@ -316,24 +310,42 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
     }
 
     /**
+     * Runs a single pending task immediately.
+     * @return True if there are remaining tasks
+     */
+    public boolean poll() {
+        return runtime.fnPoll(JSContext.this);
+    }
+
+    /**
      * Poll the context to run any queued tasks. This is normally done automatically, but
      * needs to be called manually with {@link TaskManager#useCurrentThread}
      */
-    public void poll() {
+    public CompletableFuture<Void> executeAllPendingJobs() {
         if (pollQueued.compareAndSet(false, true)) {
+            var promise = new CompletableFuture<Void>();
             runtime.doLater(new Task<Void>("poll " + getPointer()) {     // Always doLater
                 public void run() {
-                    if (!isClosed()) {
-                        pollQueued.set(false);
-                        bump();
-                        if (runtime.fnPoll(JSContext.this)) {
-                            poll();
+                    try {
+                        if (!isClosed()) {
+                            bump();
+
+                            boolean hasMoreJobs = true;
+                            while (hasMoreJobs && !isClosed()) {
+                                hasMoreJobs = poll();
+                            }
+                            pollQueued.set(false);
                         }
+                        promise.complete(null);
+                    } finally {
+                        pollQueued.set(false);
+                        complete(null);
                     }
-                    complete(null);
                 }
             });
+            return promise;
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     void bump() {
@@ -394,7 +406,6 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
     void notifyPromiseCreated(JSPromise promise) {
         promise.setTask(lastAsyncTask);
         runtime.getLogger().log(JSLogger.DEBUG, "Created {}", promise);
-        poll();
     }
 
     /**
@@ -418,16 +429,10 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
                         byte[] data = pack(value);
                         runtime.fnPromiseResolve(promise, data);
                     }
-                    pollQueued.set(false);
                     bump();
-                    if (runtime.fnPoll(JSContext.this)) {
-                        poll();
-                    }
                     complete(null);
                 }
             });
-        } else {
-            poll();
         }
     }
 

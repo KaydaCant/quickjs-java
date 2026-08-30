@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -37,6 +38,7 @@ public class JSContextTest {
         runtime.setStderr(System.err);
         runtime.setStdout(System.out);
         runtime.setLogger(JSLogger.toStream(6, System.out));
+        runtime.setRuntimeLimit(5000);
         return runtime;
     }
 
@@ -48,6 +50,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testReturnValuesFromEval() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -141,6 +144,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testReturnFunctionFromEval() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -193,6 +197,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testSetGlobal() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -237,6 +242,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testGetGlobal() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -290,6 +296,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testNativeObjects() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -351,6 +358,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testNativeObjectFromJavaSide() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -392,6 +400,7 @@ public class JSContextTest {
      * array will be visible on both the Java and the JS side.
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testNativeArrays() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -446,6 +455,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testNativeArraysFromJavaSide() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -488,6 +498,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void exportJavaFunctionsToJS() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -579,6 +590,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testScriptRuntimeLimit() throws Exception {
         try (@SuppressWarnings("resource") JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
             try {
@@ -598,6 +610,7 @@ public class JSContextTest {
      * prevent faulty scripts to overload the host
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testScriptMemoryLimit() throws Exception {
         try (@SuppressWarnings("resource") JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
             try {
@@ -620,6 +633,7 @@ public class JSContextTest {
      */
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testExceptionHandling() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -651,6 +665,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testJavaExceptionHandling() throws Exception {
         try (JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
             try {
@@ -681,6 +696,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testInvokeJSFunction() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -705,6 +721,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testConstructors() throws Exception {
         JSRuntime runtime = newRuntime();
         JSContext context = runtime.newContext();
@@ -741,6 +758,7 @@ public class JSContextTest {
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void mapJSObjectToJavaInterface() throws Exception {
         try (JSRuntime runtime = newRuntime();JSContext context = runtime.newContext()) {
             JSObject obj = (JSObject) context.evalNow(
@@ -756,13 +774,14 @@ public class JSContextTest {
 
     /**
      * High-level async support is provided. Promises from
-     * {@link JSContext#eval((String)} are wrapped by a
+     * {@link JSContext#eval(String)} are wrapped by a
      * CompletableFuture, which will be completed / completed exceptionally as soon
      * as the underlying promise is completed / rejected
      * 
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void promiseSupport() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -775,6 +794,7 @@ public class JSContextTest {
                     "manualPromise\n");
 
             CompletableFuture<Object> r2 = context.eval("await trigger(\"Classic resolve\");");
+            context.executeAllPendingJobs();
             r1.get(1000, TimeUnit.MILLISECONDS);
             r2.get(1000, TimeUnit.MILLISECONDS);
             assertTrue(true);
@@ -785,18 +805,20 @@ public class JSContextTest {
 
     /**
      * High-level async support is provided. Promises from
-     * {@link JSContext#eval((String)} are wrapped by a
+     * {@link JSContext#eval(String)} are wrapped by a
      * CompletableFuture, which will be completed as soon
      * as the underlying promise is completed
      * 
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void simplePromiseSupport() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
 
             CompletableFuture<Object> r1 = context.eval("await \"Classic resolve\" ");
+            context.executeAllPendingJobs();
             assertEquals("Classic resolve", r1.join());
         }
     }
@@ -805,13 +827,14 @@ public class JSContextTest {
 
     /**
      * High-level async support is provided. Promises from
-     * {@link JSContext#eval((String)} are wrapped by a
+     * {@link JSContext#eval(String)} are wrapped by a
      * CompletableFuture, which will be completed exceptionally as soon
      * as the underlying promise is rejected
      * 
      * @throws Exception
      */
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void simplePromiseErrSupport() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -834,6 +857,7 @@ public class JSContextTest {
      */
     @SuppressWarnings("rawtypes")
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void completableFutureSupport() throws Exception {
         try (JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
             {
@@ -841,9 +865,10 @@ public class JSContextTest {
                 context.put("p0", promise);
 
                 CompletableFuture<Object> r1 = context.eval("await p0");
-                Thread.sleep(100);
+                context.executeAllPendingJobs().join();
                 assertFalse(((CompletableFuture) r1).isDone());
                 promise.complete(53);
+                context.executeAllPendingJobs().join();
                 assertEquals(53, promise.join());
                 assertEquals(53, r1.join());
             }
@@ -852,9 +877,10 @@ public class JSContextTest {
                 //
                 context.put("p", promise);
                 CompletableFuture result = context.eval("await p.then((v) => { return v * 3; });");
-                Thread.sleep(100);
+                context.executeAllPendingJobs().join();
                 assertFalse(((CompletableFuture) result).isDone());
                 promise.complete(54);
+                context.executeAllPendingJobs().join();
                 assertEquals(162, ((CompletableFuture) result).join());
             }
         }
@@ -868,6 +894,7 @@ public class JSContextTest {
      */
     @SuppressWarnings("rawtypes")
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void functionsCanReturnCompletableFutures() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
@@ -882,9 +909,11 @@ public class JSContextTest {
 
             CompletableFuture<?> result = context.eval("await answer()");
             assertFalse(((CompletableFuture) result).isDone());         // Result is not completed here
-            Thread.sleep(100);
+            context.executeAllPendingJobs().join();
             assertFalse(((CompletableFuture) result).isDone());         // Even after emptying the event pipeline it is still not completed
             cf.complete(42);
+            context.executeAllPendingJobs().join();
+
             assertEquals(42, ((CompletableFuture) result).join());
         }
     }
@@ -892,6 +921,7 @@ public class JSContextTest {
     //----------------------------------------------------------------------------
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testPromiseCanDependOnFutureDirect() throws Exception {
         try (JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
 
@@ -909,6 +939,7 @@ public class JSContextTest {
                             try { Thread.sleep(500); } catch (Exception e) {}
                             runtime.getLogger().log(JSLogger.DEBUG, "Completing future in background thread");
                             future.complete("done");
+                            context.executeAllPendingJobs();
                         }
                     }).start();
                     return future;
@@ -924,6 +955,7 @@ public class JSContextTest {
     //----------------------------------------------------------------------------
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testPromiseCanDependOnFutureAsync() throws Exception {
         try (JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
 
@@ -935,6 +967,7 @@ public class JSContextTest {
                             try { Thread.sleep(500); } catch (Exception e) {}
                             runtime.getLogger().log(JSLogger.DEBUG, "Completing future in background thread");
                             future.complete("done");
+                            context.executeAllPendingJobs();
                         }
                     }).start();
                     return future;
@@ -949,6 +982,7 @@ public class JSContextTest {
     //----------------------------------------------------------------------------
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testPromiseErrorInFutureDirect() throws Exception {
         JSRuntime runtime = newRuntime();
         JSContext context = runtime.newContext();
@@ -961,6 +995,7 @@ public class JSContextTest {
                             try { Thread.sleep(500); } catch (Exception e) {}
                             runtime.getLogger().log(JSLogger.DEBUG, "Completing future in background thread");
                             future.complete("done");
+                            context.executeAllPendingJobs();
                         }
                     }).start();
                     return future;
@@ -979,6 +1014,7 @@ public class JSContextTest {
     //----------------------------------------------------------------------------
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testPromiseErrorInFutureAsync() throws Exception {
         JSRuntime runtime = newRuntime();
         JSContext context = runtime.newContext();
@@ -991,6 +1027,7 @@ public class JSContextTest {
                             try { Thread.sleep(500); } catch (Exception e) {}
                             runtime.getLogger().log(JSLogger.DEBUG, "Completing future in background thread");
                             future.complete("done");
+                            context.executeAllPendingJobs();
                         }
                     }).start();
                     return future;
@@ -1010,6 +1047,7 @@ public class JSContextTest {
     //----------------------------------------------------------------------------
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testComputableValue() throws Exception {
         JSRuntime runtime = newRuntime();
         JSContext context = runtime.newContext();
@@ -1090,6 +1128,7 @@ public class JSContextTest {
     }
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testExport() throws Exception {
         JSRuntime runtime = newRuntime();
         JSContext ctx = runtime.newContext();

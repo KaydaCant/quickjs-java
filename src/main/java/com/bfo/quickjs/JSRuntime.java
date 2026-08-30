@@ -505,7 +505,7 @@ public class JSRuntime implements AutoCloseable {
      * Calls the host function. This is a host function that is called from the QuickJS
      * runtime. Delegate the call to the corresponding context.
      * @param contextPtr context pointer                /// XXX why is this an int?
-     * @param functionPtr function pointer
+     * @param functionIndex function pointer
      * @param argsPtr points to message pack object
      * @param argsLen length of the message pack object
      * @return ptrlen to message-packed result
@@ -548,7 +548,7 @@ public class JSRuntime implements AutoCloseable {
     /**
      * Creates a new completable future and returns its index. Used to wrap native promises.
      * @param contextPtr context pointer
-     * @param functionPtr function pointer
+     * @param promisePtr promise pointer
      * @return the pointer to the future
      */
     private long fnCreateCompletableFuture(long contextPtr, long promisePtr) {
@@ -560,7 +560,7 @@ public class JSRuntime implements AutoCloseable {
      * Complete a new completable future and returns its index. Used to wrap native promises.
      * @param contextPtr context pointer
      * @param reject if 1, reject the promise
-     * @param futurePtr the pointer to the future
+     * @param futureIndex the pointer to the future
      * @param argPtr the pointer to the arguments
      * @param argLen the length of the arguments
      */
@@ -587,8 +587,8 @@ public class JSRuntime implements AutoCloseable {
     /**
      * Logs a message from the QuickJS wasm runtime to the native logger.
      * @param level the level
-     * @param messagPtr the message string pointer
-     * @param messagLen the length of the message string
+     * @param ptr the message string pointer
+     * @param len the length of the message string
      */
     private void fnLog(int level, int ptr, int len) {
         byte[] data = fetch(ptr, len);
@@ -784,11 +784,8 @@ public class JSRuntime implements AutoCloseable {
      */
     boolean fnPoll(final JSContext ctx) {
         try {
-            return doNow(new Task<Boolean>("fnPoll") {
-                public void run() {
-                    complete(call("poll_wasm", ctx.getPointer())[0] == 1);
-                }
-            }).get();
+            var result = call("poll_wasm", ctx.getPointer());
+            return result[0] == 1;
         } catch (Exception e) {
             throw toRuntimeException(e);
         }
