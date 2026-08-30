@@ -11,7 +11,7 @@
 
     <name>quickjs-java</name>
     <description>Java wrapper for the QuickJS Javascript engine based on Chicorey and rQuickJS compiled to Wasm.</description>
-    <url>https://github.com/faceless2/quickjs</url>
+    <url>https://github.com/KaydaCant/quickjs-java</url>
 
     <licenses>
         <license>
@@ -55,10 +55,9 @@
 
 
     <scm>
-        <connection>scm:git:https://github.com/faceless2/quickjs</connection>
-        <developerConnection>scm:git:https://github.com/faceless2/quickjs</developerConnection>
-        <url>https://github.com/faceless2/quickjs</url>
-        <tag>v0.1</tag>
+        <connection>scm:git:https://github.com/KaydaCant/quickjs-java</connection>
+        <developerConnection>scm:git:https://github.com/KaydaCant/quickjs-java</developerConnection>
+        <url>https://github.com/KaydaCant/quickjs-java</url>
     </scm>
 
     <dependencyManagement>
