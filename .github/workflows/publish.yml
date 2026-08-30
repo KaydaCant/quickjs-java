@@ -31,6 +31,13 @@ jobs:
         with:
           maven-version: 3.9.11
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          keyid: ${{ secrets.GPG_KEY_ID }}
+
       - name: Configure Maven credentials
         run: |
           mkdir -p ~/.m2
@@ -49,5 +56,8 @@ jobs:
       - name: Get version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
+      - name: Set version
+        run: mvn org.codehaus.mojo:versions-maven-plugin:2.20.1:set -DnewVersion="${VERSION}"
+
       - name: Build and publish
-        run: mvn --batch-mode deploy -Drevision=${VERSION}
+        run: mvn --batch-mode deploy

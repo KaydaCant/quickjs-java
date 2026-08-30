@@ -5,9 +5,9 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.bfo.quickjs</groupId>
+    <groupId>io.github.kaydacant</groupId>
     <artifactId>quickjs-java</artifactId>
-    <version>${revision}</version>
+    <version>0.0.0-SNAPSHOT</version>
 
     <name>quickjs-java</name>
     <description>Java wrapper for the QuickJS Javascript engine based on Chicorey and rQuickJS compiled to Wasm.</description>
@@ -217,14 +217,9 @@
             </plugin>
 
             <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.9.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <autoPublish>true</autoPublish>
-                </configuration>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.21.0</version>
             </plugin>
         </plugins>
     </build>
@@ -250,7 +245,6 @@
                 <chicory.interpreterFallback>FAIL</chicory.interpreterFallback>
             </properties>
             <build>
-                <!--
                 <plugins>
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
@@ -267,7 +261,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.5</version>
+                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -304,16 +298,7 @@
                             </execution>
                         </executions>
                     </plugin>
-
-                    <plugin>
-                        <artifactId>maven-release-plugin</artifactId>
-                        <version>3.0.1</version>
-                        <configuration>
-                            <tagNameFormat>v@{project.version}</tagNameFormat>
-                        </configuration>
-                    </plugin>
                 </plugins>
-                -->
             </build>
         </profile>
 
