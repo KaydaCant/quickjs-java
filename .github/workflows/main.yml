@@ -29,4 +29,11 @@ jobs:
           maven-version: 3.9.11
 
       - name: Build
-        run: mvn clean package
+        run: mvn clean package -DskipTests
+
+      - name: Run tests
+        run: mvn clean test
+      
+      - name: Print test report
+        if: failure()
+        run: cat target/surefire-reports/*.txt
