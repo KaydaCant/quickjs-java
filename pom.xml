@@ -7,7 +7,7 @@
 
     <groupId>com.bfo.quickjs</groupId>
     <artifactId>quickjs-java</artifactId>
-    <version>0.1</version>
+    <version>${revision}</version>
 
     <name>quickjs-java</name>
     <description>Java wrapper for the QuickJS Javascript engine based on Chicorey and rQuickJS compiled to Wasm.</description>
@@ -60,17 +60,6 @@
         <url>https://github.com/faceless2/quickjs</url>
         <tag>v0.1</tag>
     </scm>
-
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>
@@ -227,6 +216,16 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.9.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

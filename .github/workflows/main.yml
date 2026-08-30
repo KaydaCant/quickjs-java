@@ -29,11 +29,10 @@ jobs:
           maven-version: 3.9.11
 
       - name: Build
-        run: mvn clean package -DskipTests
+        run: mvn clean package -DskipTests -Drevision=0.0.0-SNAPSHOT
 
-      - name: Run tests
-        run: mvn clean test
-      
-      - name: Print test report
-        if: failure()
-        run: cat target/surefire-reports/*.txt
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: quickjs-java
+          path: target/*.jar
