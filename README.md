@@ -22,7 +22,7 @@ The advantage is that rather than one-thread-per task, a single thread can be us
 much like `select(2)`. **QuickJS Java** has been tested with 1000 runtimes, all waiting on promises, all from a single Java thread.
 
 ## Building
-* Requirements: Java 21+ and Rust
+* Requirements: Java 25+ and Rust
 * There is `pom.xml` for Maven, which is lifted entirely from Stefan Richter-Huber's `quickjs-wasm-java`
 * Alternatively if you find Maven slow, verbose, opaque and you want to manage your dependency supply-chain instead of outsourcing the process to the internet? There are some simple shell scripts to build the components:
   * `download-libs.sh` to download the Jars
