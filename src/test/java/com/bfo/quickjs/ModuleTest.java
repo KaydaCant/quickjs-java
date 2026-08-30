@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
+import java.sql.Time;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,12 +38,14 @@ public class ModuleTest {
         runtime.setStderr(System.err);
         runtime.setStdout(System.out);
         runtime.setLogger(JSLogger.toStream(6, System.out));
+        runtime.setRuntimeLimit(5000);
         return runtime;
     }
 
     //----------------------------------------------------------------------------
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testModuleImport() throws Exception {
         String moduleScript = "export function add(a, b) { return a+b; }";
         String mainScript = "import { add } from 'module.js'; globalThis.result = add(1, 2)";
@@ -57,13 +61,16 @@ public class ModuleTest {
         };
 
         try (JSRuntime runtime = newRuntime().setModuleResolver(resolver); JSContext context = runtime.newContext()) {
-            context.evalModule("test.js", mainScript).join();
+            var p = context.evalModule("test.js", mainScript);
+            context.executeAllPendingJobs();
+            p.join();
             Object result = context.evalNow("result");
             assertEquals(3, result);
         }
     }
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testModuleGlobal() throws Exception {
         final String moduleScript = "let a = 0; export function set(x) { a=x; }; export function get() { return a; }";
         final String mainScript = "import { set } from 'module.js'; set(12)";
@@ -81,14 +88,16 @@ public class ModuleTest {
         };
 
         try (JSRuntime runtime = newRuntime().setModuleResolver(resolver); JSContext context = runtime.newContext()) {
-            context.evalModule("first.js", mainScript).join();
-            context.evalModule("second.js", secondaryScript).join();
-            Object result = context.eval("result").get();
+            context.evalModule("first.js", mainScript);
+            context.evalModule("second.js", secondaryScript);
+            context.executeAllPendingJobs().join();
+            Object result = context.evalNow("result");
             assertEquals(12, result);
         }
     }
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testModuleError1() throws Exception {
         String mainScript = "import { add } from 'module.js'; globalThis.result = add(1, 2)";
         JSModuleResolver resolver = new JSModuleResolver() {
@@ -103,7 +112,9 @@ public class ModuleTest {
 
         try (JSRuntime runtime = newRuntime().setModuleResolver(resolver); JSContext context = runtime.newContext()) {
             try {
-                context.evalModule("first.js", mainScript).join();
+                var p = context.evalModule("first.js", mainScript);
+                context.executeAllPendingJobs();
+                p.join();
                 fail("should have failed");
             } catch (Exception e) {
                 assertEquals("Error resolving module 'module.js' from 'first.js'", e.getCause().getMessage());
@@ -112,6 +123,7 @@ public class ModuleTest {
     }
 
     @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void testModuleError3() throws Exception {
         String mainScript = "import { add } from 'module.js'; globalThis.result = add(1, 2)";
         JSModuleResolver resolver = new JSModuleResolver() {
@@ -126,7 +138,9 @@ public class ModuleTest {
 
         try (JSRuntime runtime = newRuntime().setModuleResolver(resolver); JSContext context = runtime.newContext()) {
             try {
-                context.evalModule("first.js", mainScript).join();
+                var p = context.evalModule("first.js", mainScript);
+                context.executeAllPendingJobs();
+                p.join();
                 fail("should have failed");
             } catch (Exception e) {
                 assertEquals("Error loading module 'module.js'", e.getCause().getMessage());
