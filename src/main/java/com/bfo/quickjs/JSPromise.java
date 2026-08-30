@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.*;
  * When this future is completed in Java, the next call to context.poll() will complete the JS promise.
  * When the JS promise is completed, this Future is completed to match.
  */
-public class JSPromise extends CompletableFuture<Object> implements JSType, AutoCloseable {
+public class    JSPromise extends CompletableFuture<Object> implements JSType, AutoCloseable {
 
     private final JSContext ctx;
     private final int index;

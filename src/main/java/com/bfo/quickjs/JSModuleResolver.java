@@ -17,7 +17,7 @@ public interface JSModuleResolver {
      * Load a module
      * @param module the normalized path of the module
      * @return the script
-     * @throws a RuntimeException if something went wrong
+     * @throws RuntimeException if something went wrong
      */
      String load(String module);
 

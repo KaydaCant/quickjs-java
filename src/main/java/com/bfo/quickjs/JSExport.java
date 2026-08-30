@@ -5,7 +5,7 @@ import java.lang.annotation.*;
 /**
  * <p>
  * An interface that can be used to create custom bindings. Any object implementing this
- * annotation can be passed into the JavaScript engine, where a proxy {@JSObject} will be
+ * annotation can be passed into the JavaScript engine, where a proxy {&#64;JSObject} will be
  * created that represents this object.
  * </p>
  *
@@ -44,22 +44,22 @@ import java.lang.annotation.*;
  *  </li>
  * </ul>
  * <pre><code lang="java">
- *  @JSExport public class Test {    // exports must be accessible (ie public).
+ *  &#64;JSExport public class Test {    // exports must be accessible (ie public).
  *    
- *    @JSExport public String rwfield;                          // a writable field
- *    @JSExport public final String rofield;                    // a read-only field
- *    @JSExport(field="fieldname")  public String myname;       // exported as a different name
- *    @JSExport(hidden=true)  public int secret;                // not enumerable in Object
+ *    &#64;JSExport public String rwfield;                          // a writable field
+ *    &#64;JSExport public final String rofield;                    // a read-only field
+ *    &#64;JSExport(field="fieldname")  public String myname;       // exported as a different name
+ *    &#64;JSExport(hidden=true)  public int secret;                // not enumerable in Object
  *
  *    private String name;
- *    @JSExport(field="name") public String getName();          // getter for field "name"
- *    @JSExport(field="name") public void setName(String name); // setter for field "name"
+ *    &#64;JSExport(field="name") public String getName();          // getter for field "name"
+ *    &#64;JSExport(field="name") public void setName(String name); // setter for field "name"
  *
- *    @JSExport int add(int a, int b);                          // call as add(1, 2)
- *    @JSExport int addall(int... v);                           // call as addall(1, 2, 3, 4)
- *    @JSExport int addall2(int[] v);                           // call as addall2([1, 2, 3, 4])
- *    @JSExport String func1(Object... v);                      // call as func1(1, "2", ["etc"])
- *    @JSExport String func2(List<Object> v);                   // same as above
+ *    &#64;JSExport int add(int a, int b);                          // call as add(1, 2)
+ *    &#64;JSExport int addall(int... v);                           // call as addall(1, 2, 3, 4)
+ *    &#64;JSExport int addall2(int[] v);                           // call as addall2([1, 2, 3, 4])
+ *    &#64;JSExport String func1(Object... v);                      // call as func1(1, "2", ["etc"])
+ *    &#64;JSExport String func2(List&lt;Object&gt; v);                   // same as above
  *  }
  *
  * JSContext ctx = ...;
