@@ -64,7 +64,7 @@ public class ModuleTest {
             var p = context.evalModule("test.js", mainScript);
             context.executeAllPendingJobs();
             p.join();
-            Object result = context.evalNow("result");
+            Object result = context.eval("result");
             assertEquals(3, result);
         }
     }
@@ -91,7 +91,7 @@ public class ModuleTest {
             context.evalModule("first.js", mainScript);
             context.evalModule("second.js", secondaryScript);
             context.executeAllPendingJobs().join();
-            Object result = context.evalNow("result");
+            Object result = context.eval("result");
             assertEquals(12, result);
         }
     }

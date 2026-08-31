@@ -33,25 +33,25 @@ public class ArrayBufferTest {
                 JSContext context = runtime.newContext()) {
             ByteBuffer buffer = context.newBuffer(1024);
             context.put("abuf", buffer);
-            assertEquals(1024, context.evalNow("abuf.byteLength"));
+            assertEquals(1024, context.eval("abuf.byteLength"));
 
-            context.evalNow("var ubuf = new Uint8Array(abuf); ubuf[2] = 2");
+            context.eval("var ubuf = new Uint8Array(abuf); ubuf[2] = 2");
             assertEquals((byte)2, buffer.get(2));
             buffer.put(3, (byte)3);
-            assertEquals(3, context.evalNow("ubuf[3]"));
+            assertEquals(3, context.eval("ubuf[3]"));
 
-            ByteBuffer jsBuffer = (ByteBuffer)context.evalNow("var jsabuf = new ArrayBuffer(1024); jsabuf");
+            ByteBuffer jsBuffer = (ByteBuffer)context.eval("var jsabuf = new ArrayBuffer(1024); jsabuf");
             jsBuffer.put(4, (byte)4);
-            assertEquals(4, context.evalNow("var jsubuf = new Uint8Array(jsabuf); jsubuf[4]"));
-            context.evalNow("jsubuf[5] = 5");
+            assertEquals(4, context.eval("var jsubuf = new Uint8Array(jsabuf); jsubuf[4]"));
+            context.eval("jsubuf[5] = 5");
             assertEquals((byte)5, jsBuffer.get(5));
 
             ByteBuffer large = context.newBuffer(70000);
             context.put("large", large);
-            context.evalNow("var largeView = new Uint8Array(large); largeView[69999] = 9");
+            context.eval("var largeView = new Uint8Array(large); largeView[69999] = 9");
             assertEquals((byte)9, large.get(69999));
             large.put(65536, (byte)7);
-            assertEquals(7, context.evalNow("largeView[65536]"));
+            assertEquals(7, context.eval("largeView[65536]"));
         }
     }
 

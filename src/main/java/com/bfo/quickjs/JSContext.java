@@ -1,5 +1,7 @@
 package com.bfo.quickjs;
 
+import com.sun.jdi.InvalidTypeException;
+
 import java.util.*;
 import java.util.concurrent.atomic.*;
 import java.util.concurrent.*;
@@ -236,51 +238,51 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
     }
 
     /**
-     * Eval the supplied script and return the result immediately.
+     * Eval the supplied script and return the result.
      * @param script the script
      */
-    public Object evalNow(String script) {
+    public Object eval(String script) {
         try {
-            bump();
-            byte[] data = getRuntime().fnEvalScript(JSContext.this, script);
-            Object o = unpack(data);
-            if (o instanceof RuntimeException) {
-                throw((RuntimeException)o);
-            } else {
-                return o;
-            }
-        } catch (Exception e) {
-            throw JSRuntime.toRuntimeException(e);
+            return runtime.doNow(new Task<Object>("eval " + getPointer()) {
+                public void run() {
+                    byte[] data = runtime.fnEvalScript(JSContext.this, script);
+                    Object o = unpack(data);
+                    if (o instanceof RuntimeException) {
+                        completeExceptionally((RuntimeException)o);
+                    } else {
+                        bump();
+                        complete(o);
+                    }
+                }
+            }).join();
+        } catch (CompletionException e) {
+            throw (RuntimeException) e.getCause();
         }
     }
 
     /**
-     * Eval the supplied script and return a Future to the result.
+     * Eval the supplied script and return a promise to the result.
      * @param script the script
      */
-    public CompletableFuture<Object> eval(String script) {
-        return runtime.doLater(new Task<Object>("eval " + getPointer()) {
-            public void run() {
-                final Task<Object> task = this;
-                lastAsyncTask = this;
-                byte[] data = runtime.fnEvalScriptAsync(JSContext.this, script);
-                Object o = unpack(data);
-                if (o instanceof RuntimeException) {
-                    completeExceptionally((RuntimeException)o);
-                } else {
-                    bump();
-                    final JSPromise promise = (JSPromise)o;
-                    promise.handle((Object result, Throwable error) -> {
-                        if (error != null) {
-                            task.completeExceptionally(error);
-                        } else {
-                            task.completeOrChain(result);
-                        }
-                        return null;
-                    });
+    public JSPromise evalAsync(String script) {
+        try {
+            return runtime.doNow(new Task<JSPromise>("eval " + getPointer()) {
+                public void run() {
+                    byte[] data = runtime.fnEvalScriptAsync(JSContext.this, script);
+                    Object o = unpack(data);
+                    if (o instanceof RuntimeException e) {
+                        completeExceptionally(e);
+                    } else if (o instanceof JSPromise promise) {
+                        bump();
+                        complete(promise);
+                    } else {
+                        completeExceptionally(new InvalidTypeException());
+                    }
                 }
-            }
-        });
+            }).join();
+        } catch (CompletionException e) {
+            throw (JSException) e.getCause();
+        }
     }
 
     /**
@@ -293,7 +295,6 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
         return runtime.doLater(new Task<Object>("evalModule " + getPointer()) {
             public void run() {
                 final Task<Object> task = this;
-                lastAsyncTask = this;
                 byte[] data = runtime.fnEvalModule(JSContext.this, name, script);
                 Object o = unpack(data);
                 if (o instanceof RuntimeException) {
@@ -309,6 +310,7 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
                         }
                         return null;
                     });
+                    complete(o);
                 }
             }
         });
@@ -391,23 +393,10 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
     //   
     //--------------------------------------------------------------------------------
 
-    private Task<?> lastAsyncTask; // The Task associated with the last poll() or eval()
-
-    /**
-     * Called by the JS if an unhandled exception occurs during an async method call
-     */
-    void notifyUnhandledRejectedPromise(byte[] data, boolean handled) {
-        JSException pendingRejection = (JSException)unpack(data);
-        boolean pendingRejectionHandled = handled;
-        runtime.getLogger().log(JSLogger.DEBUG, "Unhandled exception originally from {}", lastAsyncTask);
-        lastAsyncTask.completeExceptionally(pendingRejection);
-    }
-
     /**
      * Called when a promise is created, either from JS or when we create one
      */
     void notifyPromiseCreated(JSPromise promise) {
-        promise.setTask(lastAsyncTask);
         runtime.getLogger().log(JSLogger.DEBUG, "Created {}", promise);
     }
 
@@ -424,7 +413,6 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
         if (!completedByJS) {
             runtime.doLater(new Task<Void>("complete " + promise) {
                 public void run() {
-                    lastAsyncTask = promise.getTask();
                     if (ex != null) {
                         byte[] data = pack(ex);
                         runtime.fnPromiseResolve(promise, data);

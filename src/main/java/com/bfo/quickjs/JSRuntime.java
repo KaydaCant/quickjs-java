@@ -586,12 +586,13 @@ public class JSRuntime implements AutoCloseable {
         getLogger().log(level, new String(data, StandardCharsets.UTF_8));
     }
 
-    private void fnHandleRejectedPromise(long contextPtr, long promisePtr, int ptr, int len, boolean isHandled) {
+    private void fnHandleRejectedPromise(long contextPtr, long promisePtr, int exceptionPtr, int exceptionLen, boolean isHandled) {
         JSContext ctx = getContext(contextPtr);
         JSPromise promise = ctx.newPromise(promisePtr);
-        byte[] data = fetch(ptr, len);
-        dealloc(ptr, len);
-        ctx.notifyUnhandledRejectedPromise(data, isHandled);
+        byte[] exceptionData = fetch(exceptionPtr, exceptionLen);
+        dealloc(exceptionPtr, exceptionLen);
+        var pendingRejection = (JSException)ctx.unpack(exceptionData);
+        promise.completeExceptionally(pendingRejection);
     }
 
     /**

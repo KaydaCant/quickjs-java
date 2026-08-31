@@ -249,6 +249,12 @@ impl JSJavaProxy {
         } else if value.is_bool() {
             let boolean = value.as_bool().unwrap();
             return Ok(JSJavaProxy::Boolean(boolean));
+        } else if value.is_error() {
+            debug!("Converting js error to java exception");
+            let obj = value.into_object().unwrap();
+            let message: String = obj.get("message").unwrap_or("<No exception message>".to_string());
+            let stacktrace: String = obj.get("stack").unwrap_or("<No stacktrace>".to_string());
+            return Ok(JSJavaProxy::Exception(message, stacktrace))
         } else if value.is_exception() {
             debug!("Converting js exception to java exception");
             let exception = value.into_exception().unwrap();
@@ -480,6 +486,24 @@ mod tests {
                 ]
             ),
             _ => panic!("Expected an array"),
+        }
+    }
+
+    #[test]
+    fn test_js_java_proxy_exception() {
+        let rt = Runtime::new().unwrap();
+        let context = Context::full(&rt).unwrap();
+
+        let result = context.with(|ctx| {
+            let value: JSJavaProxy = ctx.eval("throw new Error(\"Error\")").unwrap();
+            value
+        });
+
+        match result {
+            JSJavaProxy::Exception(message, _stack) => {
+                assert_eq!(message, "Error")
+            }
+            _ => panic!("Expected an exception"),
         }
     }
 

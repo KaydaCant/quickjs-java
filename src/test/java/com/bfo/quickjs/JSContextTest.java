@@ -10,15 +10,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Arrays;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -56,41 +52,41 @@ public class JSContextTest {
                 JSContext context = runtime.newContext()) {
             // Test return of null
             {
-                Object result = context.evalNow("let ra = null; ra");
+                Object result = context.eval("let ra = null; ra");
                 assertEquals(null, result);
             }
             // Test return of undefined
             {
-                Object result = context.evalNow("let rb = undefined; rb");
+                Object result = context.eval("let rb = undefined; rb");
                 assertEquals(null, result);
             }
             // Test return of integer
             {
-                Object result = context.evalNow("3 + 1");
+                Object result = context.eval("3 + 1");
                 assertInstanceOf(Integer.class, result);
                 assertEquals(4, result);
             }
             // Test return of string
             {
-                Object result = context.evalNow(" 'Hello ' + 'World'");
+                Object result = context.eval(" 'Hello ' + 'World'");
                 assertInstanceOf(String.class, result);
                 assertEquals("Hello World", result);
             }
             // Test return of boolean
             {
-                Object result = context.evalNow(" true");
+                Object result = context.eval(" true");
                 assertInstanceOf(Boolean.class, result);
                 assertEquals(true, result);
             }
             // Test return of double
             {
-                Object result = context.evalNow(" 3.14");
+                Object result = context.eval(" 3.14");
                 assertInstanceOf(Double.class, result);
                 assertEquals(3.14, result);
             }
             // Test return of (heterogeneous and nested) array
             {
-                Object result = context.evalNow("[ 3.14, 42, 'hello', true, [1,2,3]]");
+                Object result = context.eval("[ 3.14, 42, 'hello', true, [1,2,3]]");
                 assertInstanceOf(List.class, result);
                 @SuppressWarnings("unchecked")
                 List<Object> list = (List<Object>) result;
@@ -110,7 +106,7 @@ public class JSContextTest {
             // Test return of (heterogeneous and nested) object
             {
                 Object result = context
-                        .evalNow("let r = { a: 3.14, b: 42, c: 'hello', d: true, e: [1,2,3], f: {g: 42}}; r");
+                        .eval("let r = { a: 3.14, b: 42, c: 'hello', d: true, e: [1,2,3], f: {g: 42}}; r");
                 assertInstanceOf(Map.class, result);
                 @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) result;
@@ -150,7 +146,7 @@ public class JSContextTest {
                 JSContext context = runtime.newContext()) {
             // Local function
             {
-                Object result = context.evalNow("let r = function() { return 42; }; r");
+                Object result = context.eval("let r = function() { return 42; }; r");
                 assertInstanceOf(JSFunction.class, result);
                 JSFunction function = (JSFunction) result;
                 assertEquals(42, function.call());
@@ -160,13 +156,13 @@ public class JSContextTest {
 
                 // JS Function can be added back to the js context with a different name
                 context.put("f1", function);
-                Object r2 = context.evalNow("f1()");
+                Object r2 = context.eval("f1()");
                 assertEquals(42, r2);
             }
 
             // Global function
             {
-                Object result = context.evalNow("function a() { return 1; };a");
+                Object result = context.eval("function a() { return 1; };a");
                 assertInstanceOf(JSFunction.class, result);
                 JSFunction function = (JSFunction) result;
                 assertEquals(1, function.call());
@@ -177,7 +173,7 @@ public class JSContextTest {
             }
             // Function with arguments
             {
-                Object result = context.evalNow("function a(b) { return b + 1; };a");
+                Object result = context.eval("function a(b) { return b + 1; };a");
                 assertInstanceOf(JSFunction.class, result);
                 JSFunction function = (JSFunction) result;
                 assertEquals("a", function.getName());
@@ -203,32 +199,32 @@ public class JSContextTest {
                 JSContext context = runtime.newContext()) {
             {
                 context.put("a", 42);
-                Object result = context.evalNow("a");
+                Object result = context.eval("a");
                 assertEquals(42, result);
             }
             {
                 context.put("a", "hello");
-                Object result = context.evalNow("a");
+                Object result = context.eval("a");
                 assertEquals("hello", result);
             }
             {
                 context.put("a", true);
-                Object result = context.evalNow("a");
+                Object result = context.eval("a");
                 assertEquals(true, result);
             }
             {
                 context.put("a", 3.14);
-                Object result = context.evalNow("a");
+                Object result = context.eval("a");
                 assertEquals(3.14, result);
             }
             {
                 context.put("a", List.of(1, 2, 3));
-                Object result = context.evalNow("a[0]");
+                Object result = context.eval("a[0]");
                 assertEquals(1, result);
             }
             {
                 context.put("a", Map.of("b", 42));
-                Object result = context.evalNow("a.b");
+                Object result = context.eval("a.b");
                 assertEquals(42, result);
             }
         }
@@ -301,7 +297,7 @@ public class JSContextTest {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
 
-            context.evalNow("var a = {a: 1, b: 'Hello'};");
+            context.eval("var a = {a: 1, b: 'Hello'};");
             Object result = context.get("a");
             assertInstanceOf(JSObject.class, result);
 
@@ -323,7 +319,7 @@ public class JSContextTest {
             assertTrue(keys.contains("b"));
 
             assertNull(obj.get("c"));
-            Object r0 = context.evalNow("a.c");
+            Object r0 = context.eval("a.c");
             assertNull(r0);
 
             // One can add a value on Java side, and its visible on JS
@@ -332,20 +328,20 @@ public class JSContextTest {
             assertEquals(1, obj.get("a"));
             assertEquals("Hello", obj.get("b"));
             assertEquals(42, obj.get("c"));
-            Object r1 = context.evalNow("a.c");
+            Object r1 = context.eval("a.c");
             assertEquals(42, r1);
 
             // One can modify a value on java side and its visible on JS
             obj.put("a", 10);
             assertEquals(10, obj.get("a"));
-            Object r2 = context.evalNow("a.a");
+            Object r2 = context.eval("a.a");
             assertEquals(10, r2);
 
             // One can remove a value on java side and its visible on JS
             obj.remove("b");
             assertEquals(2, obj.size()); // a and c
             assertEquals(10, obj.get("a"));
-            Object r3 = context.evalNow("a.b");
+            Object r3 = context.eval("a.b");
             assertEquals(null, r3);
         }
     }
@@ -369,25 +365,25 @@ public class JSContextTest {
             context.put("a", map);
             assertEquals(2, map.keySet().size());
 
-            Object result = context.evalNow("a.a");
+            Object result = context.eval("a.a");
             assertEquals("Hello", result);
 
-            result = context.evalNow("a.b");
+            result = context.eval("a.b");
             assertEquals("World", result);
 
-            result = context.evalNow("a.c");
+            result = context.eval("a.c");
             assertEquals(null, result);
 
             // One can add a value on JS side, and its visible on Java
-            context.evalNow("a.c = 'test_value'");
+            context.eval("a.c = 'test_value'");
             assertEquals("test_value", map.get("c"));
 
             // One can modify a value on JS side, and its visible on Java
-            context.evalNow("a.a = 'test_value'");
+            context.eval("a.a = 'test_value'");
             assertEquals("test_value", map.get("a"));
 
             // One can remove a value on JS side, and its visible on Java
-            context.evalNow("delete a.b");
+            context.eval("delete a.b");
             assertEquals(null, map.get("b"));
 
         }
@@ -405,7 +401,7 @@ public class JSContextTest {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
 
-            context.evalNow("var a = [1, 2, 3];");
+            context.eval("var a = [1, 2, 3];");
             Object result = context.get("a");
             assertInstanceOf(JSArray.class, result);
             @SuppressWarnings("unchecked")
@@ -422,7 +418,7 @@ public class JSContextTest {
             assertEquals(2, array.get(1));
             assertEquals(3, array.get(2));
             assertEquals(4, array.get(3));
-            Object r1 = context.evalNow("a[3]");
+            Object r1 = context.eval("a[3]");
             assertEquals(4, r1);
 
             // Even add inbetween
@@ -435,13 +431,13 @@ public class JSContextTest {
             // One can modify a value on java side and its visible on JS
             array.set(0, 10);
             assertEquals(10, array.get(0));
-            Object r2 = context.evalNow("a[0]");
+            Object r2 = context.eval("a[0]");
             assertEquals(10, r2);
 
             // One can remove a value on java side and its visible on JS
             array.remove(0);
             assertEquals(4, array.size());
-            Object r3 = context.evalNow("a[0]");
+            Object r3 = context.eval("a[0]");
             assertEquals(9, r3);
 
         }
@@ -466,23 +462,23 @@ public class JSContextTest {
             assertEquals(2, list.size());
 
             context.put("a", list);
-            assertEquals("a", context.evalNow("a[0]"));
-            assertEquals("b", context.evalNow("a[1]"));
+            assertEquals("a", context.eval("a[0]"));
+            assertEquals("b", context.eval("a[1]"));
 
             // Modification on the js side are visible in the java object
 
             // Add element
-            context.evalNow("a[2]='c';");
+            context.eval("a[2]='c';");
             assertEquals(3, list.size());
             assertEquals("c", list.get(2));
 
             // Reassign element
-            context.evalNow("a[0]='d'");
+            context.eval("a[0]='d'");
             assertEquals(3, list.size());
             assertEquals("d", list.get(0));
 
             // Delete elements
-            context.evalNow(" a.splice(2, 1);  a.splice(1, 1);");
+            context.eval(" a.splice(2, 1);  a.splice(1, 1);");
             assertEquals(1, list.size());
             assertEquals("d", list.get(0));
 
@@ -544,36 +540,36 @@ public class JSContextTest {
             context.put("clamp", clamp);
             context.put("generic", generic);
 
-            Object result = context.evalNow("add(1, 2)");
+            Object result = context.eval("add(1, 2)");
             assertEquals(3, result);
 
-            result = context.evalNow("square(2)");
+            result = context.eval("square(2)");
             assertEquals(4, result);
 
-            result = context.evalNow("random()");
+            result = context.eval("random()");
             assertEquals(42, result);
 
-            result = context.evalNow("clamp(2, 4, 3)");
+            result = context.eval("clamp(2, 4, 3)");
             assertEquals(3, result);
 
-            result = context.evalNow("count(1)");
+            result = context.eval("count(1)");
             assertEquals(1, counter.get());
 
-            result = context.evalNow("combine(3 , 4)");
+            result = context.eval("combine(3 , 4)");
             assertEquals(7, adder.get());
 
             // A function with an argument that is List, or a superclass of List
             // will always see the arguments supplied as a List.
-            result = context.evalNow("generic()");
+            result = context.eval("generic()");
             assertEquals("[]", result);
 
-            result = context.evalNow("generic(1)");
+            result = context.eval("generic(1)");
             assertEquals("[1]", result);
 
-            result = context.evalNow("generic(1, 2)");
+            result = context.eval("generic(1, 2)");
             assertEquals("[1, 2]", result);
 
-            result = context.evalNow("generic(1, 2, 3)");
+            result = context.eval("generic(1, 2, 3)");
             assertEquals("[1, 2, 3]", result);
 
             // If one retrieves any javafunction from js it is returned as JSFUnction
@@ -595,7 +591,7 @@ public class JSContextTest {
         try (@SuppressWarnings("resource") JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
             try {
                 runtime.setRuntimeLimit(1000);
-                context.evalNow("while(true){}");
+                context.eval("while(true){}");
                 fail("Script runtime limit should have been reached");
             } catch (Exception e) {
                 debug(runtime, e.getMessage());
@@ -615,7 +611,7 @@ public class JSContextTest {
         try (@SuppressWarnings("resource") JSRuntime runtime = newRuntime(); JSContext context = runtime.newContext()) {
             try {
                 runtime.setMemoryLimit(10000);
-                context.evalNow(
+                context.eval(
                         "const memoryHog = [];\nconst chunk = \"M_E_M_O_R_Y_\".repeat(100000);\nwhile (true) {memoryHog.push(chunk); }");
             } catch (JSException e) {
                 assertEquals("out of memory", e.getMessage());
@@ -638,7 +634,7 @@ public class JSContextTest {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
             try {
-                context.evalNow("""
+                context.eval("""
                         let a = 1;
                         let b = 0;
                         let c = a / b;
@@ -675,7 +671,7 @@ public class JSContextTest {
 
                 context.put("add", add);
                 // This calls the java function add which throws an exception
-                context.evalNow("add(1, 2)");
+                context.eval("add(1, 2)");
 
                 fail("Exception should have been thrown");
             } catch (Exception e) {
@@ -702,12 +698,12 @@ public class JSContextTest {
                 JSContext context = runtime.newContext()) {
 
             {
-                context.evalNow("function a(x, y) { return x + y; };");
+                context.eval("function a(x, y) { return x + y; };");
                 Object result = ((JSFunction)context.get("a")).call(1, 2);
                 assertEquals(3, result);
             }
             {
-                context.evalNow("var g = {f: function(x, y) { return x + y; }};");
+                context.eval("var g = {f: function(x, y) { return x + y; }};");
                 Object result = ((JSFunction)((JSObject)context.get("g")).get("f")).call(1, 2);
                 assertEquals(3, result);
             }
@@ -726,9 +722,9 @@ public class JSContextTest {
         JSRuntime runtime = newRuntime();
         JSContext context = runtime.newContext();
         try {
-            context.evalNow("class Foo { constructor(x) { this.a = x; } } function Bar(x) { return x; }");
-            final JSFunction foo = (JSFunction)context.evalNow("Foo");
-            final JSFunction bar = (JSFunction)context.evalNow("Bar");
+            context.eval("class Foo { constructor(x) { this.a = x; } } function Bar(x) { return x; }");
+            final JSFunction foo = (JSFunction)context.eval("Foo");
+            final JSFunction bar = (JSFunction)context.eval("Bar");
             assertTrue(foo.isConstructor());
             assertTrue(bar.isConstructor());    // Meh, functions are also constructors
             Object o1 = foo.construct(1);
@@ -761,7 +757,7 @@ public class JSContextTest {
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void mapJSObjectToJavaInterface() throws Exception {
         try (JSRuntime runtime = newRuntime();JSContext context = runtime.newContext()) {
-            JSObject obj = (JSObject) context.evalNow(
+            JSObject obj = (JSObject) context.eval(
                     "let obj = {add: function(a, b) { return a + b; }, substract: function(a, b) { return a - b; }}; obj");
             assertNotNull(obj);
             TestInterface testInterface = obj.as(TestInterface.class);
@@ -786,18 +782,25 @@ public class JSContextTest {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
 
-            CompletableFuture<Object> r1 = context.eval("let trigger;\n" + //
+            /*Object r1 = context.eval("let trigger;\n" + //
                     "const manualPromise = new Promise((resolve, reject) => {\n" + //
                     "  // Assign the internal resolve function to our outside variable\n" + //
                     "  trigger = resolve; \n" + //
                     "});\n" + //
-                    "manualPromise\n");
+                    "manualPromise\n");*/
+            JSPromise manualPromise = (JSPromise) context.eval("""
+                    let trigger;
+                    const manualPromise = new Promise((resolve, reject) => {
+                      // Assign the internal resolve function to our outside variable
+                      trigger = resolve;
+                    });
+                    manualPromise
+                    """);
+            assertInstanceOf(JSPromise.class, manualPromise);
 
-            CompletableFuture<Object> r2 = context.eval("await trigger(\"Classic resolve\");");
-            context.executeAllPendingJobs();
-            r1.get(1000, TimeUnit.MILLISECONDS);
-            r2.get(1000, TimeUnit.MILLISECONDS);
-            assertTrue(true);
+            context.eval("trigger(\"Classic resolve\");");
+            context.executeAllPendingJobs().join();
+            assertTrue(manualPromise.isDone());
         }
     }
 
@@ -817,8 +820,9 @@ public class JSContextTest {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
 
-            CompletableFuture<Object> r1 = context.eval("await \"Classic resolve\" ");
+            JSPromise r1 = context.evalAsync("await \"Classic resolve\" ");
             context.executeAllPendingJobs();
+            assertInstanceOf(JSPromise.class, r1);
             assertEquals("Classic resolve", r1.join());
         }
     }
@@ -835,15 +839,14 @@ public class JSContextTest {
      */
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
-    public void simplePromiseErrSupport() throws Exception {
+    public void simpleErrSupport() throws Exception {
         try (JSRuntime runtime = newRuntime();
                 JSContext context = runtime.newContext()) {
 
-            CompletableFuture<Object> r1 = context.eval("throw Err('hello') ");
             try {
-                r1.get(1000, TimeUnit.MILLISECONDS);
+                Object r1 = context.eval("throw new Error('hello') ");
                 fail("Should have failed");
-            } catch (ExecutionException e) {
+            } catch (RuntimeException e) {
                 assertTrue(true);
             }
         }
@@ -855,7 +858,6 @@ public class JSContextTest {
      * Completable futures are internally wrapped with promises and can be treated
      * like promises
      */
-    @SuppressWarnings("rawtypes")
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     public void completableFutureSupport() throws Exception {
@@ -864,9 +866,8 @@ public class JSContextTest {
                 CompletableFuture<Object> promise = new CompletableFuture<>();
                 context.put("p0", promise);
 
-                CompletableFuture<Object> r1 = context.eval("await p0");
-                context.executeAllPendingJobs().join();
-                assertFalse(((CompletableFuture) r1).isDone());
+                JSPromise r1 = context.evalAsync("await p0");
+                assertFalse(r1.isDone());
                 promise.complete(53);
                 context.executeAllPendingJobs().join();
                 assertEquals(53, promise.join());
@@ -876,12 +877,11 @@ public class JSContextTest {
                 CompletableFuture<Object> promise = new CompletableFuture<>();
                 //
                 context.put("p", promise);
-                CompletableFuture result = context.eval("await p.then((v) => { return v * 3; });");
-                context.executeAllPendingJobs().join();
-                assertFalse(((CompletableFuture) result).isDone());
+                JSPromise result = context.evalAsync("await p.then((v) => { return v * 3; });");
+                assertFalse(result.isDone());
                 promise.complete(54);
                 context.executeAllPendingJobs().join();
-                assertEquals(162, ((CompletableFuture) result).join());
+                assertEquals(162, result.join());
             }
         }
     }
@@ -907,14 +907,14 @@ public class JSContextTest {
 
             context.put("answer", answer);
 
-            CompletableFuture<?> result = context.eval("await answer()");
-            assertFalse(((CompletableFuture) result).isDone());         // Result is not completed here
+            JSPromise result = context.evalAsync("await answer()");
+            assertFalse(result.isDone());         // Result is not completed here
             context.executeAllPendingJobs().join();
-            assertFalse(((CompletableFuture) result).isDone());         // Even after emptying the event pipeline it is still not completed
+            assertFalse(result.isDone());         // Even after emptying the event pipeline it is still not completed
             cf.complete(42);
             context.executeAllPendingJobs().join();
 
-            assertEquals(42, ((CompletableFuture) result).join());
+            assertEquals(42, result.join());
         }
     }
 
@@ -946,7 +946,7 @@ public class JSContextTest {
                 }
             });
 
-            CompletableFuture<?> result = (CompletableFuture<?>)context.evalNow("answer().then(x => \"all \" + x).then(store)");
+            CompletableFuture<?> result = (CompletableFuture<?>)context.eval("answer().then(x => \"all \" + x).then(store)");
             result.get(1000, TimeUnit.MILLISECONDS);
             assertEquals("all done", answer[0]);
         }
@@ -974,7 +974,8 @@ public class JSContextTest {
                 }
             });
 
-            CompletableFuture<?> result = context.eval("await new Promise((resolve) => { answer().then(resolve) })");
+            JSPromise result = context.evalAsync("await new Promise((resolve) => { answer().then(resolve) })");
+            assertInstanceOf(JSPromise.class, result);
             assertEquals("done", result.get(1000, TimeUnit.MILLISECONDS));
         }
     }
@@ -1001,11 +1002,11 @@ public class JSContextTest {
                     return future;
                 }
             });
-            CompletableFuture<?> result = (CompletableFuture<?>)context.evalNow("answer().then(x => { throw new Error(\"failed\"); } )");
+            CompletableFuture<?> result = (CompletableFuture<?>)context.eval("answer().then(x => { throw new Error(\"failed\"); } )");
             result.get(1000, TimeUnit.MILLISECONDS);
             fail("Should have failed");
         } catch (ExecutionException e) {
-            assertEquals("Promise rejected", e.getCause().getMessage());
+            assertEquals("failed", e.getCause().getMessage());
         } finally {
             runtime.close();
         }
@@ -1033,7 +1034,7 @@ public class JSContextTest {
                     return future;
                 }
             });
-            CompletableFuture<?> result = context.eval("await new Promise((resolve) => { answer().then(x => { throw new Error(\"failed\"); } ) })");
+            JSPromise result = context.evalAsync("await answer().then(x => { throw new Error(\"failed\"); })");
             result.get(1000, TimeUnit.MILLISECONDS);
             fail("Should have failed");
         } catch (ExecutionException e) {
@@ -1068,12 +1069,12 @@ public class JSContextTest {
             o.put("foo", value);
             o.put("bar", value);
             context.put("magic", o);
-            Object oo = context.evalNow("magic.foo");
-            assertEquals("FOO()", context.evalNow("magic.foo"));
-            assertEquals("BAR()", context.evalNow("magic.bar"));
-            assertEquals("BAR(1)", context.evalNow("magic.bar = 1; magic.bar"));
-            assertEquals("FOO(1)", context.evalNow("magic.foo"));  // Same value shared over two properties
-            assertEquals(2, context.evalNow("Object.keys(magic).length"));  // Properties are enumerable
+            Object oo = context.eval("magic.foo");
+            assertEquals("FOO()", context.eval("magic.foo"));
+            assertEquals("BAR()", context.eval("magic.bar"));
+            assertEquals("BAR(1)", context.eval("magic.bar = 1; magic.bar"));
+            assertEquals("FOO(1)", context.eval("magic.foo"));  // Same value shared over two properties
+            assertEquals(2, context.eval("Object.keys(magic).length"));  // Properties are enumerable
         } finally {
             runtime.close();
         }
@@ -1136,54 +1137,54 @@ public class JSContextTest {
             ExportTest test = new ExportTest();
             ctx.put("test", test);
             // Test fields
-            assertEquals("rw-1", ctx.evalNow("test.field1"));
-            assertEquals("ro-2", ctx.evalNow("test.field2"));
-            assertEquals("rw-3", ctx.evalNow("test.field3"));
-            assertEquals("ro-h-4", ctx.evalNow("test.field4"));
-            assertEquals("rw-5", ctx.evalNow("test.field5"));
-            assertEquals("ro-6", ctx.evalNow("test.field6"));
-            assertEquals("ro-h-7", ctx.evalNow("test.field7"));
-            assertEquals("rw-d-8", ctx.evalNow("test.field8"));
-            assertEquals("add,addAll,cat,catArray,catList,field1,field2,field3,field5,field6,field8", ctx.evalNow("Object.keys(test).sort().toString()"));    // hidden fields are hidden
-            assertEquals("mod1", ctx.evalNow("test.field1 = \"mod1\"; test.field1"));      // rw fields can be updated
-            assertEquals("1", ctx.evalNow("test.field1 = 1; test.field1"));                // rw fields can be updated with type conversion
-            assertEquals("[1, 2]", ctx.evalNow("test.field1 = [1,2]; test.field1"));       // rw fields can be updated with type conversion
-            assertEquals(null, ctx.evalNow("test.field1 = null; test.field1"));            // rw fields can be updated with null value
-            assertEquals("mod1", ctx.evalNow("test.field3 = \"mod1\"; test.field3"));      // rw fields can be updated
-            assertEquals("1", ctx.evalNow("test.field3 = 1; test.field3"));                // as above but for renamed field
-            assertEquals("[1, 2]", ctx.evalNow("test.field3 = [1,2]; test.field3"));       // 
-            assertEquals(null, ctx.evalNow("test.field3 = null; test.field3"));            //
-            assertEquals("mod1", ctx.evalNow("test.field5 = \"mod1\"; test.field5"));      //
-            assertEquals("1", ctx.evalNow("test.field5 = 1; test.field5"));                // as above but using getter/setter
-            assertEquals("[1, 2]", ctx.evalNow("test.field5 = [1,2]; test.field5"));       //
-            assertEquals(null, ctx.evalNow("test.field5 = null; test.field5"));            //
+            assertEquals("rw-1", ctx.eval("test.field1"));
+            assertEquals("ro-2", ctx.eval("test.field2"));
+            assertEquals("rw-3", ctx.eval("test.field3"));
+            assertEquals("ro-h-4", ctx.eval("test.field4"));
+            assertEquals("rw-5", ctx.eval("test.field5"));
+            assertEquals("ro-6", ctx.eval("test.field6"));
+            assertEquals("ro-h-7", ctx.eval("test.field7"));
+            assertEquals("rw-d-8", ctx.eval("test.field8"));
+            assertEquals("add,addAll,cat,catArray,catList,field1,field2,field3,field5,field6,field8", ctx.eval("Object.keys(test).sort().toString()"));    // hidden fields are hidden
+            assertEquals("mod1", ctx.eval("test.field1 = \"mod1\"; test.field1"));      // rw fields can be updated
+            assertEquals("1", ctx.eval("test.field1 = 1; test.field1"));                // rw fields can be updated with type conversion
+            assertEquals("[1, 2]", ctx.eval("test.field1 = [1,2]; test.field1"));       // rw fields can be updated with type conversion
+            assertEquals(null, ctx.eval("test.field1 = null; test.field1"));            // rw fields can be updated with null value
+            assertEquals("mod1", ctx.eval("test.field3 = \"mod1\"; test.field3"));      // rw fields can be updated
+            assertEquals("1", ctx.eval("test.field3 = 1; test.field3"));                // as above but for renamed field
+            assertEquals("[1, 2]", ctx.eval("test.field3 = [1,2]; test.field3"));       // 
+            assertEquals(null, ctx.eval("test.field3 = null; test.field3"));            //
+            assertEquals("mod1", ctx.eval("test.field5 = \"mod1\"; test.field5"));      //
+            assertEquals("1", ctx.eval("test.field5 = 1; test.field5"));                // as above but using getter/setter
+            assertEquals("[1, 2]", ctx.eval("test.field5 = [1,2]; test.field5"));       //
+            assertEquals(null, ctx.eval("test.field5 = null; test.field5"));            //
             try {
-                ctx.evalNow("test.field2 = 1");                                            // ro fields can not be updated
+                ctx.eval("test.field2 = 1");                                            // ro fields can not be updated
                 fail("Value should be read-only");
             } catch (Exception e) {
                 assertEquals("no setter for property", e.getMessage());
             }
             try {
-                ctx.evalNow("test.field6 = \"foo\"");                                      // ro pseudo-fields with method can not be updated
+                ctx.eval("test.field6 = \"foo\"");                                      // ro pseudo-fields with method can not be updated
                 fail("Value should be read-only");
             } catch (Exception e) {
                 assertEquals("no setter for property", e.getMessage());
             }
-            ctx.evalNow("delete test.field8");                                             // a deletable property can be deleted,
-            assertNull(ctx.evalNow("test.field8"));                                        // and when it is it has no value in JavaScript.
-            ctx.evalNow("test.field8 = 1");                                                // recreated the value is allowed, but the JS
-            assertEquals(1, ctx.evalNow("test.field8"));                                   // and Java values are no longer linked
+            ctx.eval("delete test.field8");                                             // a deletable property can be deleted,
+            assertNull(ctx.eval("test.field8"));                                        // and when it is it has no value in JavaScript.
+            ctx.eval("test.field8 = 1");                                                // recreated the value is allowed, but the JS
+            assertEquals(1, ctx.eval("test.field8"));                                   // and Java values are no longer linked
             assertEquals("rw-d-8", test.getField8());
 
             // Test method calls
-            assertEquals(3, ctx.evalNow("test.add(1,2)"));                                 // simple calls with various type coercions
-            assertEquals(3, ctx.evalNow("test.add(true,2)"));
-            assertEquals(3, ctx.evalNow("test.add(true,2.0)"));
-            assertEquals(3, ctx.evalNow("test.add(true,\"2\")"));
-            assertEquals(15, ctx.evalNow("test.addAll(1, 2, 3, 4, 5)"));                   // varargs
-            assertEquals("[1, foo, false, [1, 2], {foo=1}, null]", ctx.evalNow("test.cat(1,\"foo\",false,[1,2],{\"foo\":1},null)"));       // varargs
-            assertEquals("[1, foo, false, [1, 2], {foo=1}, null]", ctx.evalNow("test.catArray([1,\"foo\",false,[1,2],{\"foo\":1},null])"));
-            assertEquals("[1, foo, false, [1, 2], {foo=1}, null]", ctx.evalNow("test.catList([1,\"foo\",false,[1,2],{\"foo\":1},null])"));
+            assertEquals(3, ctx.eval("test.add(1,2)"));                                 // simple calls with various type coercions
+            assertEquals(3, ctx.eval("test.add(true,2)"));
+            assertEquals(3, ctx.eval("test.add(true,2.0)"));
+            assertEquals(3, ctx.eval("test.add(true,\"2\")"));
+            assertEquals(15, ctx.eval("test.addAll(1, 2, 3, 4, 5)"));                   // varargs
+            assertEquals("[1, foo, false, [1, 2], {foo=1}, null]", ctx.eval("test.cat(1,\"foo\",false,[1,2],{\"foo\":1},null)"));       // varargs
+            assertEquals("[1, foo, false, [1, 2], {foo=1}, null]", ctx.eval("test.catArray([1,\"foo\",false,[1,2],{\"foo\":1},null])"));
+            assertEquals("[1, foo, false, [1, 2], {foo=1}, null]", ctx.eval("test.catList([1,\"foo\",false,[1,2],{\"foo\":1},null])"));
         } finally {
             runtime.close();
         }
