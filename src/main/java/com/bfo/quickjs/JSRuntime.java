@@ -204,13 +204,8 @@ public class JSRuntime implements AutoCloseable {
 
     void closeContext(final JSContext ctx, Runnable callback) {
         try {
-            doNow(new Task<Void>("close context") {
-                public void run() {
-                    callback.run();
-                    contexts.remove(ctx.getPointer());
-                    complete(null);
-                }
-            }).get();
+            callback.run();
+            contexts.remove(ctx.getPointer());
         } catch (Exception e) {
             throw toRuntimeException(e);
         }
@@ -243,22 +238,17 @@ public class JSRuntime implements AutoCloseable {
      */
     @Override public void close() throws Exception {
         if (!isClosed()) {
-            doNow(new Task<Void>("close runtime " + getPointer()) {
-                public void run() {
-                    if (!isClosed()) {
-                        try {
-                            for (JSContext ctx : contexts.values()) {
-                                ctx.close();
-                            }
-                        } catch (Exception e) {}
-                        contexts.clear();
-                        fnRuntimeClose();
-                        getTaskManager().remove(JSRuntime.this);
-                        pointer = 0;
-                        complete(null);
+            if (!isClosed()) {
+                try {
+                    for (JSContext ctx : contexts.values()) {
+                        ctx.close();
                     }
-                }
-            }).get();
+                } catch (Exception e) {}
+                contexts.clear();
+                fnRuntimeClose();
+                getTaskManager().remove(JSRuntime.this);
+                pointer = 0;
+            }
         }
     }
 
@@ -665,7 +655,16 @@ public class JSRuntime implements AutoCloseable {
 
     private void fnRuntimeClose() {
         if (!isClosed()) {
-            call("close_runtime_wasm", getPointer());
+            try {
+                doNow(new Task<>("fnRuntimeClose") {
+                    public void run() {
+                        call("close_runtime_wasm", getPointer());
+                        complete(null);
+                    }
+                }).get();
+            } catch (Exception e) {
+                throw toRuntimeException(e);
+            }
         }
     }
 
@@ -784,8 +783,12 @@ public class JSRuntime implements AutoCloseable {
      */
     boolean fnPoll(final JSContext ctx) {
         try {
-            var result = call("poll_wasm", ctx.getPointer());
-            return result[0] == 1;
+            return doNow(new Task<Boolean>("fnPoll") {
+                 public void run() {
+                     var result = call("poll_wasm", ctx.getPointer());
+                     complete(result[0] == 1);
+                 }
+            }).get();
         } catch (Exception e) {
             throw toRuntimeException(e);
         }

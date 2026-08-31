@@ -24,7 +24,8 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
     private volatile long pointer;
     private volatile int generation;
     private AtomicBoolean pollQueued = new AtomicBoolean();     // No point polling more than once in each event loop
-
+    private Task<Void> taskExecutionPromise;
+    private boolean closing = false;
 
     JSContext(JSRuntime runtime) {
         // Always called on correct thread
@@ -112,23 +113,27 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
      */
     @Override public void close() throws Exception {
         if (!isClosed()) {
-            runtime.closeContext(this, new Runnable() {
-                public void run() {
-                    if (!isClosed()) {
-                        // Always called on correct thread
-                        runtime.getLogger().log(JSLogger.DEBUG, "Closing Context {}", getPointer());
-                        try {
-                            globals.close();
-                            for (AutoCloseable resource : closeables) {
-                                if (resource != null) {
-                                    resource.close();
-                                }
-                            }
-                        } catch (Exception e) {}
-                        closeables.clear();
-                        runtime.fnContextClose(JSContext.this);
-                        pointer = 0;
+            runtime.closeContext(this, () -> {
+                if (!isClosed()) {
+                    // Always called on correct thread
+                    runtime.getLogger().log(JSLogger.DEBUG, "Closing Context {}", getPointer());
+                    closing = true;
+                    if (taskExecutionPromise != null && taskExecutionPromise.isDone()) {
+                        taskExecutionPromise.join();
                     }
+
+                    try {
+                        globals.close();
+                        for (AutoCloseable resource : closeables) {
+                            if (resource != null) {
+                                resource.close();
+                            }
+                        }
+                    } catch (Exception e) {}
+
+                    closeables.clear();
+                    runtime.fnContextClose(JSContext.this);
+                    pointer = 0;
                 }
             });
         }
@@ -323,29 +328,27 @@ public class JSContext extends AbstractMap<String,Object> implements AutoCloseab
      */
     public CompletableFuture<Void> executeAllPendingJobs() {
         if (pollQueued.compareAndSet(false, true)) {
-            var promise = new CompletableFuture<Void>();
-            runtime.doLater(new Task<Void>("poll " + getPointer()) {     // Always doLater
+            return runtime.doLater(new Task<>("poll " + getPointer()) {     // Always doLater
                 public void run() {
                     try {
                         if (!isClosed()) {
                             bump();
 
                             boolean hasMoreJobs = true;
-                            while (hasMoreJobs && !isClosed()) {
+                            while (hasMoreJobs && !isClosed() && !closing) {
                                 hasMoreJobs = poll();
                             }
                             pollQueued.set(false);
                         }
-                        promise.complete(null);
                     } finally {
                         pollQueued.set(false);
+                        taskExecutionPromise = null;
                         complete(null);
                     }
                 }
             });
-            return promise;
         }
-        return CompletableFuture.completedFuture(null);
+        return (taskExecutionPromise != null) ? taskExecutionPromise : CompletableFuture.completedFuture(null);
     }
 
     void bump() {
