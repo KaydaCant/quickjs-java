@@ -22,6 +22,7 @@ public class JSRuntime implements AutoCloseable {
     private TaskManager tasker;
     private JSLogger logger;
     private JSModuleResolver moduleResolver;
+    private JSRejectedPromiseHandler rejectedPromiseHandler;
     private long threadId;                              // The ID of the Thread that will run all our tasks. Set by TaskManager
     private final Map<Long,JSContext> contexts = new HashMap<>();
     private InputStream stdin;                          // Streams
@@ -151,6 +152,14 @@ public class JSRuntime implements AutoCloseable {
             throw new IllegalStateException("Already created");
         }
         this.moduleResolver = resolver;
+        return this;
+    }
+
+    public JSRuntime setRejectedPromiseHandler(JSRejectedPromiseHandler handler) {
+        if (instance != null) {
+            throw new IllegalStateException("Already created");
+        }
+        this.rejectedPromiseHandler = handler;
         return this;
     }
 
@@ -342,7 +351,7 @@ public class JSRuntime implements AutoCloseable {
                             (Instance instance, long... args) -> { fnLoadModule((int)args[0], (int)args[1], (int)args[2]); return new long[0]; }),
 
                         createHostFunction("env", "handle_rejected_promise", List.of(ValType.I64, ValType.I64, ValType.I32, ValType.I32, ValType.I32), List.of(),
-                            (Instance instance, long... args) -> { fnHandleRejectedPromise(args[0], args[1], (int)args[2], (int)args[3], args[4] != 0); return new long[] { 0 }; })
+                            (Instance instance, long... args) -> { fnHandleRejectedPromise(args[0], args[1], (int)args[2], (int)args[3], args[4] != 0); return new long[0]; })
 
                     });
                     WasmModule module = WasmLib.load();
@@ -593,6 +602,10 @@ public class JSRuntime implements AutoCloseable {
         dealloc(exceptionPtr, exceptionLen);
         var pendingRejection = (JSException)ctx.unpack(exceptionData);
         promise.completeExceptionally(pendingRejection);
+
+        if (rejectedPromiseHandler != null) {
+            rejectedPromiseHandler.handle(promise, pendingRejection);
+        }
     }
 
     /**

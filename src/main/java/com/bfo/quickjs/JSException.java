@@ -1,5 +1,7 @@
 package com.bfo.quickjs;
 
+import java.io.PrintWriter;
+
 /**
  * Exception thrown when a QuickJS script throws an exception. It contains the
  * message and the stack trace. If a java callback throws an exception, it is
@@ -26,4 +28,17 @@ public class JSException extends RuntimeException {
         return stack;
     }
 
+    @Override
+    public void printStackTrace(PrintWriter s) {
+        s.println(getClass().getName() + ": " + getMessage());
+        if (stack != null) {
+            s.println(stack);
+        }
+
+        Throwable cause = getCause();
+        if (cause != null) {
+            s.println("Caused by:");
+            cause.printStackTrace(s);
+        }
+    }
 }
